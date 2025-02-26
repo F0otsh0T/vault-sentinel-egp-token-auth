@@ -5,14 +5,22 @@
 #  - Deny Operation: delete
 #  - Prevent KV v1 Secret Engine Creation
 
-
-# Rule to deny read access to KV v2 secret at path "egpvaultkv02"
+################################################
+# Import Libraries / Modules / Plugins
 import "strings"
 import "json"
 # import "tfrun"
 # import "name"
 # import "calendar"
 # import "vault"
+
+################################################
+# DEBUG / PRINT
+print("Namespace path:", namespace.path)
+print("Request path:", request.path)
+print("Request data:", request.data)
+print("Request operation:", request.operation)
+print("Token path:", token.path)
 
 ################################################
 # PREVENT KV V1 SECRETS ENGINE
@@ -27,6 +35,7 @@ prevent_kv_v1_engines = func() {
   print("Request path:", request.path)
   print("Request data:", request.data)
   print("Request operation:", request.operation)
+  print("Token path:", token.path)
 
   # Validate that path includes sys/mounts
   if request.path matches "^(.*)sys\\/mounts\\/(.*)$" and
@@ -41,7 +50,6 @@ prevent_kv_v1_engines = func() {
     }
     return true
   }
-
   return true
 }
 
@@ -59,6 +67,7 @@ test_func = func() {
   print("Request path:", request.path)
   print("Request data:", request.data)
   print("Request operation:", request.operation)
+  print("Token path:", token.path)
 
   #
   
@@ -72,17 +81,20 @@ test_func = func() {
 path = request.path
 data = request.data
 operation = request.operation
+token_path = token.path
 
-# Determine if this is a read operation
-is_read = strings.has_prefix(request.operation, "read")
+# Operations
+# `read` operation
+ops_read = strings.has_prefix(request.operation, "read")
+# `delete` operation
+ops_delete = request.operation in ["delete"]
+# `update` operation
+ops_update = request.operation in ["update"]
 
 # Check if we're accessing the KV v2 data path - must be correctly set in main rule for proper evaluation
 # Note: KV v2 uses "data" subpath for actual secret access
 allow_kv_path = strings.has_prefix(path, "egpkvv2/data/egpvaultkv01")
 deny_kv_path = strings.has_prefix(path, "egpkvv2/data/egpvaultkv02")
-
-# Operations Denied for KV v2 - must be correctly set in main rule for proper evaluation
-deny_operations = request.operation in ["delete"]
 
 # Check Preconditions - main rule will not apply unless this precondition is met 
 precond = rule {
@@ -93,13 +105,13 @@ precond = rule {
 
 # Set denial message
 # messages = {}
-# if is_read && deny_kv_path {
+# if ops_read && deny_kv_path {
 #     messages["error"] = "Read access to secret/data/egpvaultkv02 is restricted by policy."
 # }
 
 # # Main policy
 # main = rule when {
-#     is_read && deny_kv_path
+#     ops_read && deny_kv_path
 # } then {
 #     false with messages
 # } else {
@@ -108,10 +120,16 @@ precond = rule {
 
 # Allow read access to the specific path
 main = rule when precond {
-  is_read and
+# main = rule when is_kv_v2_crud_operation {
+  ## 
+  ops_read and
   allow_kv_path and
   !(deny_kv_path) and
-  !(deny_operations) and
+  !(ops_delete) and
+  secrets_engines_validated or
+  ##
+  ops_update and
+  !(ops_delete) and
   secrets_engines_validated
 }
 
