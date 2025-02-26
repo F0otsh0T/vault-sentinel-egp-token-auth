@@ -1,0 +1,120 @@
+################################################
+# Sentinel EGP Policy Goals:
+#  - Allow Read: egpkvv2/data/egpvaultkv01
+#  - Deny Read: egpkvv2/data/egpvaultkv02
+#  - Deny Operation: delete
+#  - Prevent KV v1 Secret Engine Creation
+
+
+# Rule to deny read access to KV v2 secret at path "egpvaultkv02"
+import "strings"
+import "json"
+# import "tfrun"
+# import "name"
+# import "calendar"
+# import "vault"
+
+################################################
+# PREVENT KV V1 SECRETS ENGINE
+# https://github.com/hashicorp/vault-guides/blob/master/governance/sentinel/prevent-kv-v1-engines.sentinel
+
+# Function that validates the request is related to mounting kv secret engines
+prevent_kv_v1_engines = func() {
+
+  # Print some information about the request
+  # Note that these messages will only be printed when the policy is violated
+  print("Namespace path:", namespace.path)
+  print("Request path:", request.path)
+  print("Request data:", request.data)
+  print("Request operation:", request.operation)
+
+  # Validate that path includes sys/mounts
+  if request.path matches "^(.*)sys\\/mounts\\/(.*)$" and
+     ("type" in keys(request.data) and request.data.type is "kv") and
+     request.operation in ["create", "update"] {
+    print("type of secrets engine:", request.data.type)
+    if (request.data.options else null is null) or 
+       ("version" in keys(request.data.options) and request.data.options.version is "1") {
+      print("The version of the KV secrets engine is 1 which is not allowed.")
+      print("Please set version to 2 or create engine with type kv-v2")
+      return false
+    }
+    return true
+  }
+
+  return true
+}
+
+secrets_engines_validated = prevent_kv_v1_engines()
+
+################################################
+# Function: Logic to Match
+#  - 
+#  - 
+test_func = func() {
+
+  # Print some information about the request
+  # Note that these messages will only be printed when the policy is violated
+  print("Namespace path:", namespace.path)
+  print("Request path:", request.path)
+  print("Request data:", request.data)
+  print("Request operation:", request.operation)
+
+  #
+  
+
+}
+
+################################################
+# KV v2 Secret Path
+
+# Capture the request details
+path = request.path
+data = request.data
+operation = request.operation
+
+# Determine if this is a read operation
+is_read = strings.has_prefix(request.operation, "read")
+
+# Check if we're accessing the KV v2 data path - must be correctly set in main rule for proper evaluation
+# Note: KV v2 uses "data" subpath for actual secret access
+allow_kv_path = strings.has_prefix(path, "egpkvv2/data/egpvaultkv01")
+deny_kv_path = strings.has_prefix(path, "egpkvv2/data/egpvaultkv02")
+
+# Operations Denied for KV v2 - must be correctly set in main rule for proper evaluation
+deny_operations = request.operation in ["delete"]
+
+# Check Preconditions - main rule will not apply unless this precondition is met 
+precond = rule {
+    request.operation in ["create", "read", "update", "delete", "list"] and
+    # request.operation in ["read"] and
+    strings.has_prefix(request.path, "egpkvv2/")
+}
+
+# Set denial message
+# messages = {}
+# if is_read && deny_kv_path {
+#     messages["error"] = "Read access to secret/data/egpvaultkv02 is restricted by policy."
+# }
+
+# # Main policy
+# main = rule when {
+#     is_read && deny_kv_path
+# } then {
+#     false with messages
+# } else {
+#     true
+# }
+
+# Allow read access to the specific path
+main = rule when precond {
+  is_read and
+  allow_kv_path and
+  !(deny_kv_path) and
+  !(deny_operations) and
+  secrets_engines_validated
+}
+
+
+
+
