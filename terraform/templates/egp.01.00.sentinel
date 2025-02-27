@@ -15,10 +15,18 @@ import "json"
 # import "vault"
 
 ################################################
+# Capture the path being accessed
+path = request.path
+data = request.data
+operation = request.operation
+token_path = token.path
+
+################################################
 # DEBUG / PRINT
 print("Namespace path:", namespace.path)
 print("Request path:", request.path)
 print("Request data:", request.data)
+print("Request type:", request.data.type)
 print("Request operation:", request.operation)
 print("Token path:", token.path)
 
@@ -29,13 +37,13 @@ print("Token path:", token.path)
 # Function that validates the request is related to mounting kv secret engines
 prevent_kv_v1_engines = func() {
 
-  # Print some information about the request
-  # Note that these messages will only be printed when the policy is violated
-  print("Namespace path:", namespace.path)
-  print("Request path:", request.path)
-  print("Request data:", request.data)
-  print("Request operation:", request.operation)
-  print("Token path:", token.path)
+  ## Print some information about the request
+  # print("Namespace path:", namespace.path)
+  # print("Request path:", request.path)
+  # print("Request data:", request.data)
+  # print("Request type:"), request.data.type)
+  # print("Request operation:", request.operation)
+  # print("Token path:", token.path)
 
   # Validate that path includes sys/mounts
   if request.path matches "^(.*)sys\\/mounts\\/(.*)$" and
@@ -56,32 +64,55 @@ prevent_kv_v1_engines = func() {
 secrets_engines_validated = prevent_kv_v1_engines()
 
 ################################################
-# Function: Logic to Match
-#  - 
-#  - 
+# LOGIC: Apply in Function
+# Match Sentinel EGP Policy Goals
+
 test_func = func() {
 
   # Print some information about the request
-  # Note that these messages will only be printed when the policy is violated
-  print("Namespace path:", namespace.path)
-  print("Request path:", request.path)
-  print("Request data:", request.data)
-  print("Request operation:", request.operation)
-  print("Token path:", token.path)
+  # print("Namespace path:", namespace.path)
+  # print("Request path:", request.path)
+  # print("Request data:", request.data)
+  # print("Request type:", request.data.type)
+  # print("Request operation:", request.operation)
+  # print("Token path:", token.path)
 
   #
-  
+  if request.operation in ["create", "read", "update", "delete", "list"] and
+    strings.has_prefix(request.path, "egpkvv2/") {
+      # print("Request operation:", request.operation)
+      # print("Request path:", request.path)
+      # print("Request data:", request.data)
+      # print("Request type:", request.data.type)
+    if request.operation == "read" and
+      request.path == "egpkvv2/data/egpvaultkv01" {
+        print("Allow read access to secret/data/egpvaultkv01")
+        return true
+      }
+    if request.operation == "read" and
+      request.path == "egpkvv2/data/egpvaultkv02" {
+        print("Deny read access to secret/data/egpvaultkv02")
+        return false
+      }
+    if request.operation in ["create", "delete"] {
+      print("Deny other CRUD operations")
+      return false
+    }
+    return true
+  }
+  return true
+}
 
+test_rule = test_func()
+
+main = rule {
+  test_rule and
+  secrets_engines_validated
 }
 
 ################################################
-# KV v2 Secret Path
-
-# Capture the request details
-path = request.path
-data = request.data
-operation = request.operation
-token_path = token.path
+# LOGIC: Apply in Main Rule
+# Match Sentinel EGP Policy Goals
 
 # Operations
 # `read` operation
@@ -119,19 +150,18 @@ precond = rule {
 # }
 
 # Allow read access to the specific path
-main = rule when precond {
-# main = rule when is_kv_v2_crud_operation {
-  ## 
-  ops_read and
-  allow_kv_path and
-  !(deny_kv_path) and
-  !(ops_delete) and
-  secrets_engines_validated or
-  ##
-  ops_update and
-  !(ops_delete) and
-  secrets_engines_validated
-}
+# main = rule when precond {
+#   ## 
+#   ops_read and
+#   allow_kv_path and
+#   !(deny_kv_path) and
+#   !(ops_delete) and
+#   secrets_engines_validated or
+#   ##
+#   ops_update and
+#   !(ops_delete) and
+#   secrets_engines_validated
+# }
 
 
 
