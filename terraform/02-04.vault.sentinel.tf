@@ -11,6 +11,6 @@ resource "vault_egp_policy" "vault_egp" {
   enforcement_level = "soft-mandatory"
   # enforcement_level = "advisory"
   # policy            = templatefile("${path.module}/templates/egp.navi.sentinel", {})
-  policy            = templatefile("${path.module}/templates/egp.01.sentinel", {})
+  policy            = templatefile("${path.module}/templates/egp.01.00.sentinel", {})
 }
 
