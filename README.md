@@ -40,9 +40,9 @@ description: Vault Sentinel EGP for KV v2
     token_accessor       oW1jblahblahblah
     token_duration       24h
     token_renewable      true
-    token_policies       ["vault-admin" "vault-github-secret-read"]
+    token_policies       ["vault-admin"]
     identity_policies    []
-    policies             ["vault-admin" "vault-github-secret-read"]
+    policies             ["vault-admin"]
     ```
 ###### Test Steps
 - Read Secrets (allowed for `egpvaultkv01` but denied for `egpvaultkv02`)
