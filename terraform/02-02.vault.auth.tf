@@ -12,7 +12,7 @@ resource "vault_token" "demo_example_token" {
   role_name = "demo-example-token-role"
   policies = [
     "vault-admin",
-    "vault-github-secret-read",
+    # "vault-github-secret-read",
   ]
   renewable       = true
   ttl             = "48h"
@@ -26,7 +26,7 @@ resource "vault_token" "demo_example_token" {
 resource "vault_token_auth_backend_role" "demo_example_token_role" {
   role_name = "demo-example-token-role"
   allowed_policies = [
-    "vault-github-secret-read",
+    # "vault-github-secret-read",
     "vault-admin",
   ]
   disallowed_policies = [
